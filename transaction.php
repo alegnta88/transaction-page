@@ -34,8 +34,8 @@ function display_transaction_id_meta_box($post) {
 
 // Check if the form is submitted
 if (isset($_POST['submit'])) {
-    // Check if both order ID and transaction ID are present in the form data
-    if (isset($_POST['order_id']) && isset($_POST['transaction_id'])) {
+    // Check if both order ID, transaction ID, and bank name are present in the form data
+    if (isset($_POST['order_id']) && isset($_POST['transaction_id']) && isset($_POST['bank_name'])) {
         try {
             // Retrieve and sanitize the inputs
             $order_id = isset($_POST['order_id']) ? sanitize_text_field($_POST['order_id']) : '';
@@ -51,9 +51,9 @@ if (isset($_POST['submit'])) {
                 // Load WooCommerce functions
                 include_once(ABSPATH . 'wp-content/plugins/woocommerce/includes/wc-core-functions.php');
 
-                // Update order status to "Completed"
+                // Check if the order is already completed
                 $order = wc_get_order($order_id);
-                if ($order) {
+                if ($order && $order->get_status() !== 'completed') {
                     // Save transaction ID and bank name as post meta
                     update_post_meta($order_id, 'transaction_id', $transaction_id);
                     update_post_meta($order_id, 'bank_name', $bank_name); // Save bank name
@@ -61,11 +61,18 @@ if (isset($_POST['submit'])) {
                     // Update order status to "Completed"
                     $order->update_status('completed');
 
-                    // Redirect to the order received page
-                    wp_redirect('https://pb365.kegeberew.com/checkout/order-received/');
-                    exit; // Ensure that the script stops executing here
+                    // Output JavaScript to show the success modal
+                    echo '<script type="text/javascript">
+                        window.onload = function() {
+                            document.getElementById("successModal").style.display = "block";
+                        };
+                    </script>';
                 } else {
-                    echo 'Invalid order ID.';
+                    echo '<script type="text/javascript">
+                        window.onload = function() {
+                            document.getElementById("alreadyCompletedModal").style.display = "block";
+                        };
+                            </script>';
                 }
             } else {
                 echo 'WooCommerce is not active.';
@@ -78,6 +85,7 @@ if (isset($_POST['submit'])) {
         echo 'Order ID, transaction ID, and bank name are required.';
     }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -87,11 +95,46 @@ if (isset($_POST['submit'])) {
     <title>Transaction ID Form</title>
     <style>
         body {
-            background-color: #dd9933;
+            background-color: #bc982b;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.8);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            border-radius: 10px;
+            opacity: .8;
+            height: 200px;
+            font-size: 26px;
+        }
+        .close {
+            color: #000;
+            float: right;
+            font-size: 35px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
+    <img src="image/Kegeberew-logo.png" alt="Logo" class="logo" style="height:100px;">
     <h3>Kegeberew E-Commerce</h3>
     <form method="post">
         <input type="hidden" name="order_id" value="<?php echo isset($_GET['order_id']) ? htmlspecialchars($_GET['order_id']) : ''; ?>">
@@ -109,5 +152,53 @@ if (isset($_POST['submit'])) {
         <input type="text" id="transaction_id" name="transaction_id" required style="height: 40px; width: 300px; padding: 5px; box-sizing: border-box;"><br><br>
         <button type="submit" name="submit" style="height: 40px; width: 100px; padding: 5px;">Submit</button>
     </form>
+
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <center><img src="image/success.jpg" alt="Logo" class="logo" style="height:80px;"></center>
+            <center><p>ትእዛዝዎ በተሳካ ሁኔታ ተላልፏል እናመሰግናለን!</p></center>
+        </div>
+    </div>
+
+    <div id="alreadyCompletedModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <center><img src="image/warn.jpg" alt="Logo" class="logo" style="height:80px;"></center>
+            <center><p style="color:black;">ይህ ትእዛዝ ከዚህ በፊት ተላልፏል እናመሰግናለን!</p></center>
+        </div>
+    </div>
+
+<script>
+    // Get the modal for success
+    var successModal = document.getElementById("successModal");
+    // Get the modal for already completed
+    var alreadyCompletedModal = document.getElementById("alreadyCompletedModal");
+
+    // Get the <span> element that closes the modal for success
+    var successModalClose = successModal.getElementsByClassName("close")[0];
+    // Get the <span> element that closes the modal for already completed
+    var alreadyCompletedModalClose = alreadyCompletedModal.getElementsByClassName("close")[0];
+
+    // When the user clicks on <span> (x), close the modal for success
+    successModalClose.onclick = function() {
+        successModal.style.display = "none";
+    };
+
+    // When the user clicks on <span> (x), close the modal for already completed
+    alreadyCompletedModalClose.onclick = function() {
+        alreadyCompletedModal.style.display = "none";
+    };
+
+    // When the user clicks anywhere outside of the modal for success, close it
+    window.onclick = function(event) {
+        if (event.target == successModal) {
+            successModal.style.display = "none";
+        } else if (event.target == alreadyCompletedModal) {
+            alreadyCompletedModal.style.display = "none";
+        }
+    };
+</script>
+
 </body>
 </html>
